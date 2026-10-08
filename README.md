@@ -5,7 +5,7 @@ Programa que **fica conectado a uma câmera e recebe os eventos dela em tempo re
 Ele usa o comando da HTTP API (V3.81, "Subscribe to Snapshot"):
 
 ```
-GET /cgi-bin/snapManager.cgi?action=attachFileProc&channel=1&heartbeat=5&Flags[0]=Event&Events=All
+GET /cgi-bin/snapManager.cgi?action=attachFileProc&channel=1&heartbeat=5&Flags[0]=Event&Events=[All]
 ```
 
 O que ele faz:
@@ -66,7 +66,7 @@ CAM_IP=192.168.1.108
 CAM_USER=admin
 CAM_PASS=sua_senha_aqui
 CAM_CHANNEL=1
-CAM_EVENTS=All
+CAM_EVENTS=[All]
 ```
 
 > ⚠️ **Cuidados com o `.env`**
@@ -183,7 +183,7 @@ Para ver os logs: `docker logs -f snap-listener`. Para parar e remover: `docker 
 Se der tudo certo, a tela fica assim:
 
 ```
-2026-10-08 13:48:22 INFO Conectando: http://192.168.1.108/cgi-bin/snapManager.cgi?action=attachFileProc&channel=1&heartbeat=5&Flags[0]=Event&Events=All
+2026-10-08 13:48:22 INFO Conectando: http://192.168.1.108/cgi-bin/snapManager.cgi?action=attachFileProc&channel=1&heartbeat=5&Flags[0]=Event&Events=[All]
 2026-10-08 13:48:22 INFO Inscrição ativa (HTTP 200, multipart/x-mixed-replace; boundary=myboundary)
 2026-10-08 13:48:23 INFO EVENTO TrafficJunction [Pulse] canal=0 placa=ABC1D23
 2026-10-08 13:48:23 INFO   imagem image/jpeg (154320 bytes) -> imagens/20261008_134823_113534_TrafficJunction.jpg
@@ -213,7 +213,7 @@ As configurações podem ficar no `.env` ou ser passadas na linha de comando. A 
 | `CAM_USER` | `--usuario` | `admin` | Usuário da câmera |
 | `CAM_PASS` | `--senha` | `admin123` | Senha da câmera |
 | `CAM_CHANNEL` | `--canal` | `1` | Canal monitorado. Começa em `1`; `-1` = todos os canais |
-| `CAM_EVENTS` | `--eventos` | `All` | `All` = todos os eventos. Para filtrar: `[TrafficJunction]` ou `[TrafficJunction,CrossLineDetection]` |
+| `CAM_EVENTS` | `--eventos` | `[All]` | `[All]` = todos os eventos. Para filtrar: `[TrafficJunction]` ou `[TrafficJunction,CrossLineDetection]`. Sempre entre colchetes (se faltarem, o programa coloca) |
 | `HEARTBEAT` | `--heartbeat` | `5` | De quantos em quantos segundos a câmera manda sinal de vida |
 | `CAM_HTTPS` | `--https` | `false` | `true` para acessar por HTTPS (o certificado não é validado) |
 | `PASTA_IMAGENS` | — | `imagens` | Onde salvar as imagens |
@@ -238,7 +238,8 @@ Para ver a ajuda: `python snap_listener.py -h`
 | `Connection to ... timed out` / `ConnectTimeoutError` | O computador não está alcançando a câmera | Confira o IP e a porta no `.env`. Abra `http://IP_DA_CAMERA` no navegador: se não abrir lá, o problema é de rede (VPN, cabo, firewall) |
 | `Connection refused` | A câmera respondeu, mas não nessa porta | A porta HTTP está errada. Coloque a porta certa: `CAM_IP=IP:PORTA` |
 | `HTTP 401 Unauthorized` | Usuário ou senha errados | Confira `CAM_USER` e `CAM_PASS`. Muitas tentativas erradas podem **bloquear o usuário na câmera** por alguns minutos |
-| `HTTP 400 Bad Request` | A câmera não aceitou os parâmetros | Use `CAM_CHANNEL=1` e `CAM_EVENTS=All`. Confira se o canal existe nesse equipamento e se o nome do evento está escrito certo, entre colchetes |
+| `HTTP 400 Bad Request` | A câmera não aceitou os parâmetros | Use `CAM_CHANNEL=1` e `CAM_EVENTS=[All]`. Confira se o canal existe nesse equipamento e se o nome do evento está escrito certo, entre colchetes |
+| `HTTP 500 Internal Server Error` com corpo vazio | A câmera não conseguiu processar a inscrição. Já vimos isso com `Events=All` sem colchetes | Use a versão mais nova do `snap_listener.py`, que coloca os colchetes sozinha. Se continuar, teste `CAM_EVENTS=[All]` e `CAM_CHANNEL=1` |
 | `HTTP 404` ou `HTTP 501` | O firmware não tem esse comando | Atualize o firmware da câmera ou confirme com o suporte se o modelo suporta `snapManager.cgi` |
 | `Inscrição ativa` e nenhum evento aparece | A conexão está certa, mas nenhum evento aconteceu | Confira se o evento está **habilitado e configurado** na câmera (por exemplo, regra de leitura de placas). Provoque um evento e rode com `--debug` para ver se os heartbeats estão chegando |
 | `Read timed out` seguido de `Reconectando...` | Os dados pararam de chegar (nem o heartbeat veio) | Normalmente é instabilidade de rede, e o programa reconecta sozinho. Se acontecer sempre, aumente `HEARTBEAT` (exemplo: `10`) |

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Listener contínuo de eventos com imagem via CGI (HTTP API V3.81 - Subscribe to Snapshot):
-  GET /cgi-bin/snapManager.cgi?action=attachFileProc&channel=1&heartbeat=5&Flags[0]=Event&Events=All
+  GET /cgi-bin/snapManager.cgi?action=attachFileProc&channel=1&heartbeat=5&Flags[0]=Event&Events=[All]
 
 A câmera responde com multipart/x-mixed-replace e mantém a conexão aberta:
 
@@ -54,7 +54,7 @@ CAMERA_IP = os.getenv("CAM_IP", "192.168.1.108")  # a porta HTTP pode vir junto 
 USUARIO = os.getenv("CAM_USER", "admin")
 SENHA = os.getenv("CAM_PASS", "admin123")
 CANAL = os.getenv("CAM_CHANNEL", "1")                   # começa em 1; -1 = todos os canais
-EVENTOS = os.getenv("CAM_EVENTS", "All")  # ou filtrar, ex.: [TrafficJunction]
+EVENTOS = os.getenv("CAM_EVENTS", "[All]")  # ou filtrar, ex.: [TrafficJunction]
 HEARTBEAT = int(os.getenv("HEARTBEAT", "5"))
 PASTA_IMAGENS = os.getenv("PASTA_IMAGENS", "imagens")
 USAR_HTTPS = os.getenv("CAM_HTTPS", "false").strip().lower() in ("1", "true", "sim", "yes")
@@ -215,6 +215,13 @@ def consumir(resp):
 
 # ---------------------------------------------------------------- conexão
 
+def normalizar_eventos(eventos):
+    """A lista de eventos precisa ir entre colchetes: com Events=All a câmera responde
+    HTTP 500 (visto na VIP-9460-ULTRA-IA-FT); com Events=[All] funciona."""
+    eventos = eventos.strip()
+    return eventos if eventos.startswith("[") else f"[{eventos}]"
+
+
 def montar_url(base):
     # O requests/urllib3 envia os colchetes como %5B/%5D (o uri do Digest sai igual).
     # Se o firmware responder 400, confira no log se é por causa dessa codificação.
@@ -252,14 +259,14 @@ def main():
     p.add_argument("--usuario", default=USUARIO)
     p.add_argument("--senha", default=SENHA)
     p.add_argument("--canal", default=CANAL, help="Canal (começa em 1; -1 = todos)")
-    p.add_argument("--eventos", default=EVENTOS, help="All (padrão), [TrafficJunction] ou [A,B]")
+    p.add_argument("--eventos", default=EVENTOS, help="[All] (padrão), [TrafficJunction] ou [A,B]")
     p.add_argument("--heartbeat", type=int, default=HEARTBEAT)
     p.add_argument("--https", action="store_true", default=USAR_HTTPS,
                    help="Usar HTTPS (sem validar certificado)")
     p.add_argument("--debug", action="store_true", help="Mostra todos os campos de cada evento")
     args = p.parse_args()
 
-    CANAL, EVENTOS, HEARTBEAT = args.canal, args.eventos, args.heartbeat
+    CANAL, EVENTOS, HEARTBEAT = args.canal, normalizar_eventos(args.eventos), args.heartbeat
     if args.debug:
         log.setLevel(logging.DEBUG)
     if args.https:
