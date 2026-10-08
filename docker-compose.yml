@@ -1,0 +1,10 @@
+services:
+  snap-listener:
+    build: .
+    container_name: snap-listener
+    env_file: .env
+    environment:
+      PASTA_IMAGENS: /app/imagens
+    volumes:
+      - ./imagens:/app/imagens
+    restart: unless-stopped
